@@ -1,0 +1,98 @@
+-
+  hosts: "all"
+  vars:
+    backend_1: "{{ lookup('ansible.builtin.env', 'INSTANSE_1') }}"
+    backend_2: "{{ lookup('ansible.builtin.env', 'INSTANSE_2') }}"
+    backend_3: "{{ lookup('ansible.builtin.env', 'INSTANSE_3') }}"
+  tasks:
+    - name: Run the equivalent of "apt-get update" as a separate step
+      ansible.builtin.apt:
+        update_cache: yes
+    - name: apt install
+      apt:
+        name: 
+        - python3
+        - python3-pip
+        - rsync
+        - nginx
+        - openssl
+        - docker.io
+        - glusterfs-server
+        - glusterfs-client
+        state: present
+    - name: Make sure a service unit is running
+      ansible.builtin.systemd:
+        state: started
+        name: glusterd
+    - name: mkdir for gluster volume
+      ansible.builtin.file:
+        path: /brick
+        mode: "0777"
+        state: directory 
+-
+  hosts: "gluster_server"
+  vars:
+    backend_1: "{{ lookup('env', 'INSTANSE_1') }}"
+    backend_2: "{{ lookup('env', 'INSTANSE_2') }}"
+    backend_3: "{{ lookup('env', 'INSTANSE_3') }}"
+  tasks:
+    - name: create gluster volume
+      gluster.gluster.gluster_volume:
+        state: started
+        name: app
+        bricks: /brick
+        rebalance: yes
+        cluster:
+          - "{{ backend_1 }}"
+          - "{{ backend_2 }}"
+          - "{{ backend_3 }}"
+        force: true
+      run_once: true
+-
+  hosts: "all"
+  vars:
+    backend_1: "{{ lookup('env', 'INSTANSE_1') }}"
+    backend_2: "{{ lookup('env', 'INSTANSE_2') }}"
+    backend_3: "{{ lookup('env', 'INSTANSE_3') }}"
+  tasks:
+    - name: cp app to srv
+      synchronize:
+        src: "{{ playbook_dir }}/app"
+        dest: /opt/
+    - name: mkdir for mount gluster
+      ansible.builtin.file:
+        path: /opt/app/data
+        mode: "0777"
+        state: directory    
+    - name: Mount glusterfs
+      ansible.posix.mount:
+        src: "{{ inventory_hostname }}:/app"
+        path: /opt/app/data
+        opts: defaults,_netdev
+        state: mounted
+        fstype: glusterfs
+    - name: Build image and with build args
+      community.docker.docker_image:
+        name: app
+        build:
+          path: /opt/app
+        source: build
+    - name: Create a data container
+      community.docker.docker_container:
+        name: app
+        image: app:latest
+        volumes:
+          - /opt/app/data:/app/data
+        env: 
+          COMPETITOR_ID: "{{ lookup('env', 'COMPETITOR_ID') }}"
+        ports:
+        - "8080:1234"
+    - name: Template a file to /etc/file.conf
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/default.conf.j2"
+        dest: /etc/nginx/sites-enabled/default
+        mode: '0777'
+    - name: restart nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded

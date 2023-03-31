@@ -1,0 +1,10 @@
+-
+  hosts: "all"
+  vars:
+    backend_1: "{{ lookup('ansible.builtin.env', 'INSTANSE_1') }}"
+    # backend_2: {{ lookup('ansible.builtin.env', 'INSTANSE_2') }}
+    # backend_3: {{ lookup('ansible.builtin.env', 'INSTANSE_3') }}
+  tasks:
+    - name: Basic usage
+      ansible.builtin.debug:
+        msg: "'{{ backend_1 }}' is the HOME environment variable."

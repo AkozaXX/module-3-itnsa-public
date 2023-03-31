@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 
-yaml_struct = {"server": {"addr": "127.0.0.1", "port": 1234, "files_folder": "./data"}
+yaml_struct = {"server": {"addr": "0.0.0.0", "port": 1234, "files_folder": "./data"}
                }
 
 
