@@ -93,6 +93,6 @@
         dest: /etc/nginx/sites-enabled/default
         mode: '0777'
     - name: restart nginx
-      ansible.builtin.systemd:
-        name: nginx
-        state: reloaded
+#      ansible.builtin.systemd:
+#        name: nginx
+#        state: reloaded
