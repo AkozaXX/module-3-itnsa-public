@@ -38,7 +38,7 @@
   tasks:
     - name: create gluster volume
       gluster.gluster.gluster_volume:
-        state: started
+        state: present
         name: app
         bricks: /brick
         rebalance: yes
